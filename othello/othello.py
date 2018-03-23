@@ -39,7 +39,7 @@ class Board:
 		HIGHLIGHT_PIECE_COLOR= [255,12,0]
 		HIGHLIGHT_CELL_COLOR = [250,250,0]
 		TEXT_COLOR = [205,5,1]
-
+		BONUS = 2
 		FRAMES = 5 # number animation frames 
 		# ---------------------------- Cell Definitions ------------------------------------
 		def __init__(self, grid_pos, screen_pos, size, owner):
@@ -53,16 +53,20 @@ class Board:
 			self.radius = int((size[0]+size[1])/5) # create radius slightly smaller than avg of width and height
 			self.rect = [self.screen_pos[0],self.screen_pos[1],self.size[0],self.size[1]]
 			self.frame = 0
+			# color each cell in traditional "grid" pattern
+			# if col is even and row is odd  
 			if (i%2) == 0 and (j%2) != 0:
 					self.cell_color = Board.TILE_COLOR_A
+			# if row is even and col is odd 
 			elif (j%2) == 0 and (i%2) != 0:
 					self.cell_color = Board.TILE_COLOR_A
 			else:
+				#else color background color
 				self.cell_color = Board.TILE_COLOR_B
 			self.bunny = None
 			self.plus_one_frame = False # if bonus
 			self.font = pygame.font.SysFont(None, 54)
-			self.plus_one_text = self.font.render('+1', True,  self.TEXT_COLOR)
+			self.plus_one_text = self.font.render('+'+str(self.BONUS), True,  self.TEXT_COLOR)
 
 
 		def __repr__(self):
@@ -142,11 +146,6 @@ class Board:
 			# flip owner
 			self.owner = Board.toggle_player(self.owner)
 
-		def value(self):
-			if self.bunny:
-				return 2
-			else:
-				return 1  
 
 		def draw_highlight(self,screen, piece=False):
 			if piece:
@@ -167,6 +166,7 @@ class Board:
 		cell_size = size[0]//self.DIMEN, size[1]//self.DIMEN
 		img_size = int(cell_size[0]*0.6), int(cell_size[1]*0.6)
 		self.img = pygame.transform.scale(pygame.image.load(self.BUNNY_FILE), img_size)
+		self.player_bonuses = {} 
 		self.grid = []
 		self.setup_board(offset, cell_size)
 		# TODO - random ", draw as bunny 
@@ -176,6 +176,7 @@ class Board:
 			x,y =  random.randint(0,self.DIMEN-1), random.randint(0, self.DIMEN-1) 
 			self.grid[x][y].bunny = self.img
 		self.winner = self.PLAYER_NEITHER
+		# foreach bunny visited add to bonus
 		self.wait = 0 #animation waittime, after eah move made wait for animation
 
 	def copy(self):
@@ -199,6 +200,8 @@ class Board:
 
 
 	def setup_board(self, offset, cell_size):
+		# bonuses for each player
+		self.player_bonuses = {self.PLAYER_BLACK : 0, self.PLAYER_WHITE : 0}
 		self.pieces = {}
 		# clear if not empty
 		if len(self.grid) > 0:	
@@ -228,8 +231,8 @@ class Board:
 	def get_score(self, player):
 		score = 0
 		for cell in self.pieces[player]:
-			score += cell.value()
-		return score
+			score+=1
+		return score + self.player_bonuses[player]
 
 	def check_game_over(self):
 		'''
@@ -261,10 +264,6 @@ class Board:
 		# if the board has no empty, pick winner by number of owned cells
 		elif not has_empty:
 			print("FULL BOARD!")
-			# if black_cell_count > white_cell_count:
-			# 	winner = self.PLAYER_BLACK  
-			# elif black_cell_count < white_cell_count:
-			# 	winner = self.PLAYER_WHITE
 			if black_score > white_score:
 				winner = self.PLAYER_BLACK  
 			elif black_score < white_score:
@@ -402,6 +401,9 @@ class Board:
 				self.pieces[cell_from.owner][next_cell] = 1
 				del self.pieces[next_cell.owner][next_cell]
 				next_cell.flip() # flip owner and start animation
+				# add bonus
+				if next_cell.bunny:
+					self.player_bonuses[cell_from.owner]+=cell_from.BONUS
 			else:
 				continue_flipping  = False
 			ni, nj = ni+di, nj+dj
@@ -417,7 +419,9 @@ class Board:
 		for move in moves:
 			if move[1] == cell_to:
 				self.move_piece(move)
-				cell_to.plus_one_frame = 1
+				if cell_to.bunny:
+					self.player_bonuses[cell_to.owner]+=cell_to.BONUS
+					cell_to.plus_one_frame = 1
 
 
 	def get_move_delta(self, move):
@@ -465,30 +469,79 @@ class AI:
 # ---------------------------- Menu Class ------------------------------------
 class Menu:
 	TEXT_COLOR = [0,55,250]
-	BUTTON_COLOR = [255,255,2]
+	BUTTON_COLOR = [155,25,2]
+	HIGHLIGHT_COLOR = [255,255,0]
+	SMALL_SIZE = 6
+	MED_SIZE = 8
+	LARGE_SIZE = 10
 	# ---------------------------- Menu Definitions ------------------------------------
 	def __init__(self, offset):
 		self.pos = offset
-		self.font_height = 56
-		self.font = pygame.font.SysFont(None, self.font_height)
-		# start buttons are showed at opening menu
+		self.font = pygame.font.SysFont(None, 48)
 		self.buttons = {}
-		text = self.font.render('Start', True, self.TEXT_COLOR, self.BUTTON_COLOR)
-		pos = (offset[0]-text.get_width()//2, offset[1])
-		self.buttons['START'] = (text, pos, False)
-		# retry is at same location as start, but is displayed at game_over only 
-		text = self.font.render('Retry', True, self.TEXT_COLOR, self.BUTTON_COLOR)
-		pos = (offset[0]-text.get_width()//2, offset[1])
-		self.buttons['RETRY'] = (text, pos, True)
-		# all other buttons pos will be pos[0], pos[1]+i*text.get_height()
+		# start buttons
+		start_buttons = ['START', 'SIZE'] 
+		size = (120, 32)
+		offset =  offset[0] - size[0], offset[1]-size[1]
+
+		for i in range(0,len(start_buttons)):
+			label = start_buttons[i] 
+			text = self.font.render(label, True, self.TEXT_COLOR, self.BUTTON_COLOR)
+			text = pygame.transform.scale(text, size)
+			pos = (offset[0], offset[1]+size[1]*i)
+			self.buttons[label] = (text, pos, False)
+
+		size_end = size[0]		
+		#sizes
+		self.sizes = ['S', 'M', 'L'] 
+		for i in range(0,len(self.sizes)):
+			label = self.sizes[i] 
+			text = self.font.render(label, True, self.TEXT_COLOR, self.BUTTON_COLOR)
+			text = pygame.transform.scale(text, (int(size[0]/4), size[1]  ))
+			pos = (offset[0]+size_end+size[0]/4*(i+1), pos[1])
+			
+			self.buttons[label] = (text, pos, False)
+
+		# ---- game_over buttons ----
+		game_over_buttons = ['RETRY', 'EXIT'] 
+		# exit is at same location as start, but is displayed at game_over only
+		for i in range(0,len(game_over_buttons)):
+			label = game_over_buttons[i] 
+			text = self.font.render(label, True, self.TEXT_COLOR, self.BUTTON_COLOR)
+			text = pygame.transform.scale(text, size)
+			pos = (offset[0], offset[1]+size[1]*i)
+			self.buttons[label] = (text, pos, True)
+
+		# selected size button
+		self.selected_size = 'S' 
+
 
 	def draw(self, screen, game_over=False):
 			keys  = list(self.buttons.keys())
 			for i in range(0, len(keys)):
-				text, pos, is_game_over = self.buttons[keys[i]]
+				key = keys[i]
+				text, pos, is_game_over = self.buttons[key]
 				if game_over == is_game_over:
-					screen.blit(text, pos )
-		
+					screen.blit(text, pos)
+					if key == self.selected_size:
+						rect = [pos[0],pos[1],text.get_width(),text.get_height()]
+						pygame.draw.rect(screen, self.HIGHLIGHT_COLOR, rect, 3)
+
+	
+	def select_size(self, size):
+		if size in self.sizes:
+			self.selected_size = size 
+
+	
+	def get_size(self):
+		if self.selected_size == 'S':
+			return self.SMALL_SIZE 
+		elif self.selected_size == 'M':
+			return self.MED_SIZE
+		elif self.selected_size == 'L':
+			return self.LARGE_SIZE
+
+	
 	def get_intersecting_button(self, pos, game_over=False):
 		keys  = list(self.buttons.keys())
 		for i in range(0, len(keys)):
@@ -573,10 +626,13 @@ def main():
 	pygame.display.set_caption("Othello/Reversi ")
 	clock = pygame.time.Clock()
 	menu = Menu((size[0]//2,size[1]//2))
-	hint_font = pygame.font.SysFont(None, 34)
-	hint_text = hint_font.render('Show Hint', True, Menu.TEXT_COLOR, Menu.BUTTON_COLOR)
-	hint_button = (border, border, hint_text.get_width(),hint_text.get_height())
-	
+	hud_font = pygame.font.SysFont(None, 34)
+	hud_size = (75, 34)
+	hint_text = hud_font.render('Show Hint', True, Menu.TEXT_COLOR, Menu.BUTTON_COLOR)
+	hint_button = (border, border,hud_size[0] ,hud_size[1])
+	exit_text = hud_font.render('Exit', True, Menu.TEXT_COLOR, Menu.BUTTON_COLOR)
+	exit_button = (size[0]-border-exit_text.get_width(), border, hud_size[0] ,hud_size[1])
+	hud = [hint_button, exit_button]
 	# main while loop
 	while not exit:
 		mouse_clicked = False
@@ -594,6 +650,8 @@ def main():
 		# if new game is started reinitialize board and player vars
 		if start_new_game:
 			current_player = random.randint(Board.PLAYER_BLACK, Board.PLAYER_WHITE)
+			# set dimension before creating
+			Board.DIMEN = menu.get_size()
 			board = Board( offset, (size[0], size[0])  ) 
 			score_board = ScoreBoard((offset[0], offset[1]+size[0]))
 			player = Board.PLAYER_BLACK
@@ -606,7 +664,6 @@ def main():
 		# clear screen
 		screen.fill(BG_COLOR)
 
-		# if not 
 		if draw_board:
 			if winner != None:
 				game_over = True
@@ -654,19 +711,30 @@ def main():
 			board.draw(screen)
 			# if cell is celected highlight current piece, and any potential moves
 			#if draw move hints by selecting a random cell that has a move
-			screen.blit(hint_text, (hint_button[0],hint_button[1]))
+			screen.blit(hint_text, hint_button)
+			screen.blit(exit_text, exit_button)
+			score_board.draw(screen,board, current_player)
 			if mouse_clicked:
-				if (mouse_pos[0] > hint_button[0] and mouse_pos[0] < hint_button[0]+hint_button[2]) \
-					and (mouse_pos[1] > hint_button[1] and mouse_pos[1] < hint_button[1]+hint_button[3]): 
+				hit_button = None
+				for button in hud:
+					if (mouse_pos[0] > button [0] and mouse_pos[0] < button [0]+button [2]) \
+						and (mouse_pos[1] > button [1] and mouse_pos[1] < button [1]+button[3]): 
+						hit_button = button
+
+				if hit_button is hint_button:
 					all_moves = board.get_all_moves(current_player)
 					selected_cell = all_moves[random.randint(0, len(all_moves)-1)][0]
+				elif hit_button is exit_button: 
+					del ai; del board; del score_board
+					start_new_game = False
+					draw_board = False
+
 			if selected_cell:
 				# highlight the piece
 				potential_moves = board.get_moves(selected_cell)
 				selected_cell.draw_highlight(screen, True)
 				for move in potential_moves:
 					move.draw_highlight(screen)
-			score_board.draw(screen,board, current_player)
 
 		# else do not draw board
 		else: # show_start_menu:
@@ -676,6 +744,9 @@ def main():
 				if button_id == 'START':
 					start_new_game = True
 					draw_board = True
+				#tries to select size
+				else:
+					menu.select_size(button_id)
 			menu.draw(screen)
 		
 		if game_over: 
@@ -686,6 +757,11 @@ def main():
 					del ai; del board; del score_board
 					start_new_game = True
 					game_over = False
+				elif button == 'EXIT':
+					del ai; del board; del score_board
+					start_new_game = False
+					game_over = False
+					draw_board = False
 
 		pygame.display.flip()
 
