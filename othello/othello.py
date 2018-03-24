@@ -548,7 +548,7 @@ class Menu:
 		self.font = pygame.font.SysFont(None, 48)
 		self.buttons = {}
 		# start buttons
-		start_buttons = ['START'] 
+		start_buttons = ['1-PLAYER', '2-PLAYER'] 
 		size = (120, 32)
 		offset =  offset[0] - size[0]/2, offset[1]-size[1]/2
 
@@ -560,16 +560,17 @@ class Menu:
 			self.buttons[label] = (text, pos, False)
 
 		# y pos  of size portion of menu 
-		size_height = pos[1]+size[1]+5
+		size_height = pos[1]+size[1]+10
 		#sizes
 		self.sizes = ['S', 'M', 'L'] 
 		for i in range(0,len(self.sizes)):
 			label = self.sizes[i] 
 			text = self.font.render(label, True, self.TEXT_COLOR, self.BUTTON_COLOR)
 			text = pygame.transform.scale(text, (int(size[0]/4), size[1]  ))
-			pos = (offset[0]+size[0]/3*i, size_height)
+			pos = (offset[0]+((size[0]/4)+size[0]/8)*i, size_height)
 			
 			self.buttons[label] = (text, pos, False)
+		
 
 		# ---- game_over buttons ----
 		game_over_buttons = ['RETRY', 'EXIT'] 
@@ -704,11 +705,12 @@ def main():
 	ai = None 
 	score_board = None
 	# game and gui state variables
-	player = None
+	played = False
 	selected_cell = None 
 	current_player = None 
 	winner = None
 	exit = False
+	vs_ai = False
 	draw_board =False 		# if state should draw the board
 	start_new_game = False  # if to start a new game
 	game_over = False       # if game has ended
@@ -770,8 +772,15 @@ def main():
 			else:
 				if not board.is_waiting():
 					# player selection and is players turn
-					if current_player == player:
-						all_player_moves = board.get_all_moves(player)
+					# if playing ai and ai move 
+					if vs_ai and current_player == ai.player:
+						move = ai.get_move()
+						if move != Board.NO_MOVES:
+							board.move(current_player,move[1])
+						# update current player
+						current_player = board.toggle_player(current_player)
+					elif not played:
+						all_player_moves = board.get_all_moves(current_player)
 						if not all_player_moves:
 							current_player = board.toggle_player(current_player)
 						# if player is selecting
@@ -790,18 +799,14 @@ def main():
 									# add the piece to the cell and flip all pieces in between
 									board.move(current_player, cell)
 									current_player = board.toggle_player(current_player)
+									played = True
 								# unselect current piece if not selecting new piece
 								if cell and cell.owner == current_player:
 									selected_cell = cell 
 								else:
 									selected_cell = None
-
-					elif current_player == ai.player:
-						move = ai.get_move()
-						if move != Board.NO_MOVES:
-							board.move(current_player,move[1])
-						# update current player
-						current_player = board.toggle_player(current_player)
+				else:
+					played = False
 			#draw board
 			board.draw(screen)
 			# if cell is celected highlight current piece, and any potential moves
@@ -809,6 +814,7 @@ def main():
 			screen.blit(hint_text, hint_button)
 			screen.blit(exit_text, exit_button)
 			score_board.draw(screen,board, current_player)
+
 			if mouse_clicked:
 				hit_button = None
 				for button in hud:
@@ -836,7 +842,12 @@ def main():
 			if mouse_clicked: # handle menu input
 				button_id = menu.get_intersecting_button(mouse_pos)
 				# Start game ,create board variables!
-				if button_id == 'START':
+				if button_id == '1-PLAYER':
+					vs_ai = True
+					start_new_game = True
+					draw_board = True
+				if button_id == '2-PLAYER':
+					vs_ai = False
 					start_new_game = True
 					draw_board = True
 				#tries to select size
