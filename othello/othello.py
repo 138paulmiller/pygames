@@ -723,7 +723,7 @@ def main():
 	
 	# the exis and show hint hhud displayed during a game
 	hud_font = pygame.font.SysFont(None, 34)
-	hud_size = (75, 34)
+	hud_size = (200, 34)
 
 	hint_text = hud_font.render('Show Hint', True, Menu.TEXT_COLOR, Menu.BUTTON_COLOR)
 	hint_button = (border, border,hud_size[0] ,hud_size[1])
@@ -751,12 +751,13 @@ def main():
 			Board.DIMEN = menu.get_size()
 			board = Board( offset, (size[0], size[0])  ) 
 			score_board = ScoreBoard((offset[0], offset[1]+size[0]))
-			player = Board.PLAYER_BLACK
+			current_player = Board.PLAYER_BLACK
 			ai = AI(Board.PLAYER_WHITE, board) 
 			selected_cell = None 
 			winner = None
 			show_start_menu = False
 			start_new_game = False
+			played = False
 
 		# clear screen
 		screen.fill(BG_COLOR)
@@ -770,6 +771,7 @@ def main():
 				# display winner!
 			# make decision
 			else:
+				next_player = current_player
 				if not board.is_waiting():
 					# player selection and is players turn
 					# if playing ai and ai move 
@@ -778,11 +780,11 @@ def main():
 						if move != Board.NO_MOVES:
 							board.move(current_player,move[1])
 						# update current player
-						current_player = board.toggle_player(current_player)
+						next_player = board.toggle_player(current_player)
 					elif not played:
 						all_player_moves = board.get_all_moves(current_player)
 						if not all_player_moves:
-							current_player = board.toggle_player(current_player)
+							next_player = board.toggle_player(current_player)
 						# if player is selecting
 						elif mouse_clicked:  
 							#pick up piece an high light moves
@@ -794,17 +796,18 @@ def main():
 									potential_moves = board.get_moves(selected_cell)
 							else:
 								#try to place piece at cell
+								selected_cell = None
 								cell = board.get_intersecting_cell(mouse_pos)
 								if cell in potential_moves:
 									# add the piece to the cell and flip all pieces in between
 									board.move(current_player, cell)
-									current_player = board.toggle_player(current_player)
+									next_player = board.toggle_player(current_player)
 									played = True
-								# unselect current piece if not selecting new piece
-								if cell and cell.owner == current_player:
-									selected_cell = cell 
-								else:
 									selected_cell = None
+								# unselect current piece if not selecting new piece
+								elif cell and cell.owner == current_player:
+									selected_cell = cell 
+								
 				else:
 					played = False
 			#draw board
@@ -813,29 +816,34 @@ def main():
 			#if draw move hints by selecting a random cell that has a move
 			screen.blit(hint_text, hint_button)
 			screen.blit(exit_text, exit_button)
-			score_board.draw(screen,board, current_player)
-
+			score_board.draw(screen, board, current_player)
+			#handle HUD buttons
 			if mouse_clicked:
+				#find hit button
 				hit_button = None
 				for button in hud:
 					if (mouse_pos[0] > button [0] and mouse_pos[0] < button [0]+button [2]) \
 						and (mouse_pos[1] > button [1] and mouse_pos[1] < button [1]+button[3]): 
 						hit_button = button
-
+						break
+				#if hint show random move
 				if hit_button is hint_button:
 					all_moves = board.get_all_moves(current_player)
 					selected_cell = all_moves[random.randint(0, len(all_moves)-1)][0]
+				#if exit end play state
 				elif hit_button is exit_button: 
 					del ai; del board; del score_board
 					start_new_game = False
 					draw_board = False
-
+			# if a cell is selected highlight it and show all moves
 			if selected_cell:
 				# highlight the piece
 				potential_moves = board.get_moves(selected_cell)
 				selected_cell.draw_highlight(screen, True)
 				for move in potential_moves:
 					move.draw_highlight(screen)
+			#update player
+			current_player = next_player
 
 		# else do not draw board
 		else: # show_start_menu:
