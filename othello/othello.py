@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+'''
+othello
+	This is a Pygame application to play Othello against an AI. The GUI is hopwfully straightforward enough
+	for any new player to learn how to use it.
+	The application consits of a Board, AI, Menu, ScoreBoard and Main. 
+	The Board consists of cells which represent the spaces on the grid where pieces and bunnies are placed.
+	The board is used to make moves, get avaiable moves and draw the board state.
+	The AI is a random move  picker which makes use of the Board class to find an available move.
+	The Menu is a collection of buttons that are displayed at the end and start of a game.
+	The Scoreboard is a class that is used to draw each players score and a small icon to show the current player.
+	Main is the main game loop and performs all input handling, and game state logic.
+'''
 import datetime
 import pygame,math,random, time
 
@@ -70,14 +82,23 @@ class Board:
 
 
 		def __repr__(self):
+			'''
+				used todebug cell values
+			'''
 			return "(" + str( self.grid_pos[0]) + ", " + str(self.grid_pos[1]) + ")"
 
 		def __eq__(self, other):
+			'''
+				used to allow for cell equivalence checks
+			'''
 			if other:
 				return self.grid_pos == other.grid_pos		
 			return False
 
 		def __hash__(self):
+			'''
+				used to allow for cells to be used as dict keys
+			'''
 			return hash(self.grid_pos )
 
 
@@ -89,6 +110,10 @@ class Board:
 
 
 		def draw(self, screen):
+			'''
+				draw the given cell on the screen
+				screen : screen to draw on
+			'''
 			pygame.draw.rect(screen, self.cell_color, self.rect, 0)
 			# draw the piece if any
 			if self.owner != Board.PLAYER_NEITHER:
@@ -181,6 +206,7 @@ class Board:
 
 	def copy(self):
 		'''
+			copy creates a copy of board state
 			return deepcopy of board
 		'''
 		copy = Board(self.offset, self.size)
@@ -190,16 +216,31 @@ class Board:
 		return copy
 
 	def is_waiting(self):
-		#waiting to help tell if board is waiting for animations to finish
+		'''
+			is_waiting is used  to help tell if board is waiting for animations to finish
+			return 
+				true if wait var is not zero 
+		'''
 		return self.wait > 0
 
 
 	@staticmethod
-	def toggle_player(owner):
-		return (owner+1)%2
+	def toggle_player(player):
+		'''
+		toggle_player
+			return 
+			next player
+		'''
+		return (player+1)%2
 
 
 	def setup_board(self, offset, cell_size):
+		'''
+		setup_board
+		 sets up grid for a new game
+		 offset: position in screen space to start drawing
+		 cell_size : size for each cell in the grid
+		'''
 		# bonuses for each player
 		self.player_bonuses = {self.PLAYER_BLACK : 0, self.PLAYER_WHITE : 0}
 		self.pieces = {}
@@ -226,9 +267,20 @@ class Board:
 		c.owner = d.owner = self.PLAYER_WHITE
 
 	def get_winner(self):
+		'''
+		get_winner returns winner if any
+			return
+				games winner
+		'''
 		return self.winner
 
 	def get_score(self, player):
+		'''
+		get_score returns players score (number of owned cells plus any bonuses)
+			player : player to get score for
+			return 
+				players score
+		'''
 		score = 0
 		for cell in self.pieces[player]:
 			score+=1
@@ -236,7 +288,9 @@ class Board:
 
 	def check_game_over(self):
 		'''
-			Returns winner if game is over, if game is not over returns PLAYER_NEITHER
+			check_game_over gets games winner, else returns neither meaning game has not ended 
+			return
+			winner if game is over, if game is not over returns PLAYER_NEITHER
 		'''
 		winner = self.PLAYER_NEITHER
 		has_empty = False
@@ -250,11 +304,6 @@ class Board:
 				j+=1
 			i+=1
 
-		# if player has no cells then they lose!
-		# if black_cell_count <= 0 :
-		# 	winner = self.PLAYER_WHITE
-		# elif white_cell_count <= 0 :
-		# 	winner = self.PLAYER_BLACK
 		black_score = self.get_score(self.PLAYER_BLACK)
 		white_score = self.get_score(self.PLAYER_WHITE)
 		if black_score <= 0 :
@@ -281,7 +330,12 @@ class Board:
 		return self.winner != self.PLAYER_NEITHER
 		
 	def get_all_moves(self, player):
-		'''return false if player has no moves else returns list of all moves (cell_from, cell_to)'''
+		'''
+		get_all_moves gets all available moves for a player
+			player : player to check moves for
+			return
+			 false if player has no moves else returns list of all moves (cell_from, cell_to)
+		'''
 		moves = False
 		move = Board.NO_MOVES 
 		# for each cell try to find a move to pick
@@ -293,6 +347,10 @@ class Board:
 		return moves
 
 	def draw(self, screen):
+		'''
+		draw get all cells 
+			screen: screen to draw on
+		'''
 		self.wait-= 1
 		if self.wait < 0:
 			self.wait = 0
@@ -302,6 +360,12 @@ class Board:
 
 
 	def get_intersecting_cell(self, pos):
+		'''
+		get_intersecting_cell gets the cell object that intersects with pos
+			pos : position to check if which cell intersects
+			return:
+				cell object
+		'''
 		for row in self.grid:
 			for cell in row:
 				if cell.does_intersect(pos):
@@ -309,6 +373,12 @@ class Board:
 		return None
 
 	def get_owned_cells(self, player):
+		'''
+		get_owned_cells get all cells owned by player
+			player : player to get ownership of
+			 return:
+			 	 list of owned cells
+		'''
 		return list(self.pieces[player].keys())		
 
 	def get_moves(self, cell):
@@ -358,31 +428,13 @@ class Board:
 									#else keep searching
 		return moves
 
-	# def is_move(self, move):
-	# 	valid = False
-	# 	cell_from, cell_to = move
-	# 	if cell_to.owner == self.PLAYER_NEITHER:
-	# 		i,j = cell_from.grid_pos
-	# 		di, dj = self.get_move_delta(move)
-	# 		ni, nj = i+di, j+dj
-	# 		if (ni, nj) != (i,j):
-	# 			valid = True
-	# 			next_cell = None
-	# 			while valid and \
-	# 					ni >= 0 and ni < self.DIMEN and nj >= 0 and nj < self.DIMEN:
-	# 				next_cell = self.grid[ni][nj]
-	# 				# if cell is owned by opponent 
-	# 				if next_cell.owner == cell_from.owner or next_cell.owner == self.PLAYER_NEITHER: 
-	# 					valid  = False
-	# 				ni, nj = ni+di, nj+dj
-	# 			# empty cell broke loop
-	# 			if next_cell.owner == self.PLAYER_NEITHER:
-	# 				valid = True
-	# 			else:
-	# 				valid = False
-	# 	return valid
 
 	def move_piece(self, move):
+		'''
+			move_piece performs the move and flips all pieces between to and from cell
+			move: move[0] is the cell to move from
+				 move[1] is the cell to move to
+		'''
 		self.wait = self.WAIT_TIME
 		# flips all cells in between the line segment created by  to and from 
 		# try for each cell from owned cells		
@@ -413,7 +465,10 @@ class Board:
 
 	def move(self, player, cell_to):
 		'''
-		for each player move from any owned cell to destination cell
+		move:
+			for each player move from any owned cell to destination cell
+			player : player to move
+			cell_to : cell to drop the piece
 		'''
 		moves = self.get_all_moves(player)
 		for move in moves:
@@ -425,6 +480,11 @@ class Board:
 
 
 	def get_move_delta(self, move):
+		'''
+		gets the dx/dy of the cells defined in move
+			move : cell from and cell to ids
+			return : normalized dx/dy which direction vector to travel from move[0] to move[1]  
+		'''
 		cell_from, cell_to = move
 		i, j =  cell_from.grid_pos
 		fi, fj =  cell_to.grid_pos
@@ -442,6 +502,10 @@ class Board:
 
 
 class AI:
+	'''
+	AI is given a player ID and a reference to the board and will make random legal moves 
+	'''
+
 	def __init__(self, player, board):
 		self.player = player
 		# reference to the board
@@ -450,7 +514,8 @@ class AI:
 
 	def get_move(self):
 		'''
-			returns board state or potential move (cell_from, cell_to)
+			get_move
+			returns board state if no move, or potential move (cell_from, cell_to)
 		'''
 		#stall 
 		move = Board.GAME_OVER
@@ -468,6 +533,9 @@ class AI:
 
 # ---------------------------- Menu Class ------------------------------------
 class Menu:
+	'''
+	Menu is the series of buttons for the game over and start menu
+	'''
 	TEXT_COLOR = [0,55,250]
 	BUTTON_COLOR = [155,25,2]
 	HIGHLIGHT_COLOR = [255,255,0]
@@ -480,9 +548,9 @@ class Menu:
 		self.font = pygame.font.SysFont(None, 48)
 		self.buttons = {}
 		# start buttons
-		start_buttons = ['START', 'SIZE'] 
+		start_buttons = ['START'] 
 		size = (120, 32)
-		offset =  offset[0] - size[0], offset[1]-size[1]
+		offset =  offset[0] - size[0]/2, offset[1]-size[1]/2
 
 		for i in range(0,len(start_buttons)):
 			label = start_buttons[i] 
@@ -491,14 +559,15 @@ class Menu:
 			pos = (offset[0], offset[1]+size[1]*i)
 			self.buttons[label] = (text, pos, False)
 
-		size_end = size[0]		
+		# y pos  of size portion of menu 
+		size_height = pos[1]+size[1]+5
 		#sizes
 		self.sizes = ['S', 'M', 'L'] 
 		for i in range(0,len(self.sizes)):
 			label = self.sizes[i] 
 			text = self.font.render(label, True, self.TEXT_COLOR, self.BUTTON_COLOR)
 			text = pygame.transform.scale(text, (int(size[0]/4), size[1]  ))
-			pos = (offset[0]+size_end+size[0]/4*(i+1), pos[1])
+			pos = (offset[0]+size[0]/3*i, size_height)
 			
 			self.buttons[label] = (text, pos, False)
 
@@ -517,23 +586,37 @@ class Menu:
 
 
 	def draw(self, screen, game_over=False):
-			keys  = list(self.buttons.keys())
-			for i in range(0, len(keys)):
-				key = keys[i]
-				text, pos, is_game_over = self.buttons[key]
-				if game_over == is_game_over:
-					screen.blit(text, pos)
-					if key == self.selected_size:
-						rect = [pos[0],pos[1],text.get_width(),text.get_height()]
-						pygame.draw.rect(screen, self.HIGHLIGHT_COLOR, rect, 3)
+		'''
+		draw : draws menu
+			screen : screen to draw on
+			game_over : if true, check buttons displayed during gameover, else check start menu
+		'''
+		keys  = list(self.buttons.keys())
+		for i in range(0, len(keys)):
+			key = keys[i]
+			text, pos, is_game_over = self.buttons[key]
+			if game_over == is_game_over:
+				screen.blit(text, pos)
+				if key == self.selected_size:
+					rect = [pos[0],pos[1],text.get_width(),text.get_height()]
+					pygame.draw.rect(screen, self.HIGHLIGHT_COLOR, rect, 3)
 
 	
-	def select_size(self, size):
-		if size in self.sizes:
-			self.selected_size = size 
+	def select_size(self, size_id):
+		'''
+		select_size
+			set the selected size button
+			size: size button id
+		'''
+		if size_id in self.sizes:
+			self.selected_size = size_id 
 
 	
 	def get_size(self):
+		'''
+		get_size
+		get the size of the board based on selected button
+		'''
 		if self.selected_size == 'S':
 			return self.SMALL_SIZE 
 		elif self.selected_size == 'M':
@@ -543,6 +626,15 @@ class Menu:
 
 	
 	def get_intersecting_button(self, pos, game_over=False):
+		'''
+		get_intersecting_button
+			returns the button id if pos is with the button id.
+			pos: position of point to check for
+			game_over : if true, check buttons displayed during gameover, else check start menu
+			return:
+			 	button id
+
+		'''
 		keys  = list(self.buttons.keys())
 		for i in range(0, len(keys)):
 			text, button_pos, is_game_over  = self.buttons[keys[i]]
@@ -600,7 +692,7 @@ class ScoreBoard:
 		pygame.draw.circle(screen, color, midpoint,self.radius,0)
 		pygame.draw.circle(screen, Board.Cell.HIGHLIGHT_PIECE_COLOR, midpoint,self.radius,0)
 
-# ---------------------------- MMain Entry Point ------------------------------------
+# ---------------------------- Main Entry Point ------------------------------------
 def main():
 	# window and board size and position settings
 	BG_COLOR = [5,5,32]
@@ -614,20 +706,23 @@ def main():
 	# game and gui state variables
 	player = None
 	selected_cell = None 
-	current_player = None
+	current_player = None 
 	winner = None
 	exit = False
-	draw_board =False
-	start_new_game = False
-	game_over = False
+	draw_board =False 		# if state should draw the board
+	start_new_game = False  # if to start a new game
+	game_over = False       # if game has ended
 	# setup
 	pygame.init()
 	screen = pygame.display.set_mode(size)
 	pygame.display.set_caption("Othello/Reversi ")
 	clock = pygame.time.Clock()
 	menu = Menu((size[0]//2,size[1]//2))
+	
+	# the exis and show hint hhud displayed during a game
 	hud_font = pygame.font.SysFont(None, 34)
 	hud_size = (75, 34)
+
 	hint_text = hud_font.render('Show Hint', True, Menu.TEXT_COLOR, Menu.BUTTON_COLOR)
 	hint_button = (border, border,hud_size[0] ,hud_size[1])
 	exit_text = hud_font.render('Exit', True, Menu.TEXT_COLOR, Menu.BUTTON_COLOR)
